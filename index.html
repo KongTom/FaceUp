@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facemesh on Image</title>
+  <style>
+    canvas {
+      position: relative;
+      display: block;
+      margin: auto;
+      border: 1px solid #ccc;
+    }
+    .tooltip {
+      position: absolute;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px;
+      border-radius: 5px;
+      display: none;
+      pointer-events: none;
+      z-index: 1000; /* 화면 위에 나타나도록 설정 */
+    }
+  </style>
+</head>
+<body>
+  <canvas id="output_canvas"></canvas>
+  <div id="tooltip" class="tooltip"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+  <script src="script.js"></script> <!-- 여기에 script.js 파일 연결 -->
+</body>
+</html>
