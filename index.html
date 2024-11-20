@@ -3,13 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Facemesh on Image</title>
+  <title>FaceUp</title>
   <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    .banner {
+      width: 100%;
+      display: block;
+    }
+    .banner-container {
+      text-align: center;
+      background-color: #f4f4f4;
+      border-bottom: none;
+    }
+    .upload-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+    #upload-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    #upload-button:hover {
+      background-color: #0056b3;
+    }
     canvas {
       position: relative;
       display: block;
       margin: auto;
-      border: 1px solid #ccc;
+      border: none;
     }
     .tooltip {
       position: absolute;
@@ -19,14 +49,28 @@
       border-radius: 5px;
       display: none;
       pointer-events: none;
-      z-index: 1000; /* 화면 위에 나타나도록 설정 */
+      z-index: 1000;
     }
   </style>
 </head>
 <body>
+  <!-- 상단 배너 
+  <div class="banner-container">
+    <img src="banner.png" alt="FaceUp Banner" class="banner">
+  </div>-->
+
+  <!-- 업로드 버튼 -->
+  <div class="upload-container">
+    <input type="file" id="file-input" accept="image/*" style="display: none;">
+    <button id="upload-button">Upload Image</button>
+  </div>
+
+  <!-- 캔버스와 툴팁 -->
   <canvas id="output_canvas"></canvas>
   <div id="tooltip" class="tooltip"></div>
+
+  <!-- 스크립트 파일 -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
-  <script src="script.js"></script> <!-- 여기에 script.js 파일 연결 -->
+  <script src="script.js"></script>
 </body>
 </html>
