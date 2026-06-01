@@ -1,75 +1,489 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FaceUp</title>
+  <title>FaceUp | Face Mesh Studio</title>
   <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #19202e;
+      --muted: #667085;
+      --line: #d9e0ea;
+      --accent: #0f8b8d;
+      --accent-strong: #0b6e70;
+      --warm: #f29f05;
+      --danger: #d64550;
+      --shadow: 0 18px 50px rgba(25, 32, 46, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .banner {
-      width: 100%;
-      display: block;
+
+    button,
+    input,
+    select {
+      font: inherit;
     }
-    .banner-container {
+
+    button {
+      border: 0;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 24px;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      overflow-y: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .status-pill {
+      min-width: 84px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #e9f7f7;
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 700;
       text-align: center;
-      background-color: #f4f4f4;
-      border-bottom: none;
     }
-    .upload-container {
-      text-align: center;
-      margin: 20px 0;
+
+    .lede {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
     }
-    #upload-button {
-      padding: 10px 20px;
-      font-size: 16px;
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #344054;
+    }
+
+    .upload-row,
+    .action-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .primary-button,
+    .ghost-button,
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      border-radius: 8px;
       cursor: pointer;
-      background-color: #007BFF;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+
+    .primary-button {
+      gap: 8px;
+      background: var(--accent);
       color: white;
-      border: none;
-      border-radius: 5px;
+      font-weight: 700;
     }
-    #upload-button:hover {
-      background-color: #0056b3;
+
+    .primary-button:hover {
+      background: var(--accent-strong);
+      transform: translateY(-1px);
     }
-    canvas {
-      position: relative;
+
+    .ghost-button,
+    .icon-button {
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+      color: var(--ink);
+    }
+
+    .ghost-button:hover,
+    .icon-button:hover {
+      border-color: #b6c1d1;
+      transform: translateY(-1px);
+    }
+
+    .action-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .control-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .toggle-row,
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: #344054;
+      font-size: 14px;
+    }
+
+    .toggle-row input {
+      width: 42px;
+      height: 22px;
+      accent-color: var(--accent);
+    }
+
+    .field-row select,
+    .field-row input[type="number"],
+    .field-row input[type="range"] {
+      width: min(168px, 52%);
+    }
+
+    select,
+    input[type="number"],
+    input[type="search"] {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      background: #fbfcfe;
+      color: var(--ink);
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      min-height: 74px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+
+    .stat strong {
       display: block;
-      margin: auto;
-      border: none;
+      font-size: 22px;
+      line-height: 1.1;
     }
+
+    .stat span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .landmark-list {
+      display: grid;
+      gap: 8px;
+      max-height: 220px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .landmark-card {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfe;
+      cursor: pointer;
+    }
+
+    .landmark-card.is-active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 139, 141, 0.12);
+    }
+
+    .landmark-index {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      background: #e9f7f7;
+      color: var(--accent-strong);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .landmark-meta {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .landmark-meta b {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 16px;
+      padding: 24px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 420px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(45deg, #edf1f7 25%, transparent 25%),
+        linear-gradient(-45deg, #edf1f7 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #edf1f7 75%),
+        linear-gradient(-45deg, transparent 75%, #edf1f7 75%),
+        #f9fbfd;
+      background-size: 28px 28px;
+      background-position: 0 0, 0 14px, 14px -14px, -14px 0;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 130px);
+      background: white;
+    }
+
     .tooltip {
-      position: absolute;
-      background-color: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 5px;
-      border-radius: 5px;
+      position: fixed;
       display: none;
+      min-width: 132px;
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: rgba(25, 32, 46, 0.92);
+      color: white;
+      font-size: 12px;
+      line-height: 1.45;
       pointer-events: none;
-      z-index: 1000;
+      z-index: 10;
+    }
+
+    .empty-state {
+      position: absolute;
+      inset: auto 20px 20px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      backdrop-filter: blur(8px);
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .stage {
+        padding: 16px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .canvas-wrap {
+        min-height: 360px;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- 상단 배너 
-  <div class="banner-container">
-    <img src="banner.png" alt="FaceUp Banner" class="banner">
-  </div>-->
+  <main class="app-shell">
+    <aside class="sidebar">
+      <header>
+        <div class="brand">
+          <h1>FaceUp</h1>
+          <span class="status-pill" id="status-pill">Loading</span>
+        </div>
+        <p class="lede">MediaPipe Face Mesh 기반 얼굴 랜드마크 분석 스튜디오입니다.</p>
+      </header>
 
-  <!-- 업로드 버튼 -->
-  <div class="upload-container">
-    <input type="file" id="file-input" accept="image/*" style="display: none;">
-    <button id="upload-button">Upload Image</button>
-  </div>
+      <section class="panel">
+        <h2>Image</h2>
+        <div class="upload-row">
+          <input type="file" id="file-input" accept="image/*" hidden>
+          <button class="primary-button" id="upload-button" type="button">Upload Image</button>
+          <div class="action-grid">
+            <button class="ghost-button" id="download-json" type="button">Export JSON</button>
+            <button class="ghost-button" id="download-png" type="button">Export PNG</button>
+          </div>
+        </div>
+      </section>
 
-  <!-- 캔버스와 툴팁 -->
-  <canvas id="output_canvas"></canvas>
+      <section class="panel">
+        <h2>Overlay</h2>
+        <div class="control-list">
+          <label class="toggle-row">
+            <span>Landmarks</span>
+            <input type="checkbox" id="toggle-points" checked>
+          </label>
+          <label class="toggle-row">
+            <span>Mesh lines</span>
+            <input type="checkbox" id="toggle-mesh" checked>
+          </label>
+          <label class="toggle-row">
+            <span>Region colors</span>
+            <input type="checkbox" id="toggle-regions" checked>
+          </label>
+          <label class="toggle-row">
+            <span>Index labels</span>
+            <input type="checkbox" id="toggle-labels">
+          </label>
+          <label class="toggle-row">
+            <span>Mirror</span>
+            <input type="checkbox" id="toggle-mirror">
+          </label>
+          <label class="field-row">
+            <span>Point size</span>
+            <input type="range" id="point-size" min="1" max="8" value="3">
+          </label>
+          <label class="field-row">
+            <span>Focus index</span>
+            <input type="number" id="focus-index" min="0" max="467" placeholder="0-467">
+          </label>
+          <label class="field-row">
+            <span>Region</span>
+            <select id="region-filter">
+              <option value="all">All landmarks</option>
+              <option value="faceOval">Face oval</option>
+              <option value="leftEye">Left eye</option>
+              <option value="rightEye">Right eye</option>
+              <option value="lips">Lips</option>
+              <option value="nose">Nose</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Metrics</h2>
+        <div class="stats">
+          <div class="stat">
+            <strong id="stat-landmarks">0</strong>
+            <span>Landmarks</span>
+          </div>
+          <div class="stat">
+            <strong id="stat-faces">0</strong>
+            <span>Faces</span>
+          </div>
+          <div class="stat">
+            <strong id="stat-width">0px</strong>
+            <span>Canvas width</span>
+          </div>
+          <div class="stat">
+            <strong id="stat-height">0px</strong>
+            <span>Canvas height</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Landmark Inspector</h2>
+        <input type="search" id="landmark-search" placeholder="Search index or region" aria-label="Search landmarks">
+        <div class="landmark-list" id="landmark-list"></div>
+      </section>
+    </aside>
+
+    <section class="stage">
+      <div class="topbar">
+        <div>
+          <h2 id="image-title">Default portrait</h2>
+          <p class="lede" id="image-meta">Ready to process human.png</p>
+        </div>
+        <button class="icon-button" id="reset-view" type="button" title="Reset to default image">Reset</button>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="output_canvas"></canvas>
+        <div class="empty-state" id="empty-state">이미지를 분석하면 얼굴의 468개 랜드마크를 탐색할 수 있습니다.</div>
+      </div>
+    </section>
+  </main>
+
   <div id="tooltip" class="tooltip"></div>
 
-  <!-- 스크립트 파일 -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
   <script src="script.js"></script>
 </body>
