@@ -317,6 +317,13 @@
       max-width: 100%;
       max-height: calc(100vh - 130px);
       background: white;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    canvas:active {
+      cursor: grabbing;
     }
 
     .tooltip {

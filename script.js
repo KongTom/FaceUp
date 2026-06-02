@@ -89,6 +89,15 @@ const state = {
   selectedIndex: null,
   processingToken: 0,
   originalSize: { width: 0, height: 0 },
+  rotation: {
+    x: 0,
+    y: 0,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    startRotationX: 0,
+    startRotationY: 0,
+  },
 };
 
 function setStatus(label, type = 'ready') {
@@ -125,6 +134,7 @@ function fitCanvasToViewport(image) {
 function drawImage() {
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.globalAlpha = has3DRotation() ? 0.22 : 1;
 
   if (controls.mirror.checked) {
     canvasCtx.translate(canvasElement.width, 0);
@@ -139,12 +149,49 @@ function mirrorX(x) {
   return controls.mirror.checked ? canvasElement.width - x : x;
 }
 
+function has3DRotation() {
+  return Math.abs(state.rotation.x) > 0.001 || Math.abs(state.rotation.y) > 0.001;
+}
+
+function projectLandmark(landmark) {
+  const centerX = canvasElement.width / 2;
+  const centerY = canvasElement.height / 2;
+  const depthScale = Math.max(canvasElement.width, canvasElement.height) * 2.6;
+  const perspective = Math.max(canvasElement.width, canvasElement.height) * 1.9;
+
+  const sourceX = mirrorX(landmark.x) - centerX;
+  const sourceY = landmark.y - centerY;
+  const sourceZ = landmark.z * depthScale;
+  const cosY = Math.cos(state.rotation.y);
+  const sinY = Math.sin(state.rotation.y);
+  const cosX = Math.cos(state.rotation.x);
+  const sinX = Math.sin(state.rotation.x);
+
+  const rotatedX = sourceX * cosY + sourceZ * sinY;
+  const rotatedZ = -sourceX * sinY + sourceZ * cosY;
+  const rotatedY = sourceY * cosX - rotatedZ * sinX;
+  const finalZ = sourceY * sinX + rotatedZ * cosX;
+  const scale = perspective / (perspective + finalZ);
+
+  return {
+    ...landmark,
+    x: centerX + rotatedX * scale,
+    y: centerY + rotatedY * scale,
+    depth: finalZ,
+    scale,
+  };
+}
+
+function getProjectedLandmarks() {
+  return state.landmarks.map(projectLandmark);
+}
+
 function drawMesh(landmarkMap) {
   if (!controls.mesh.checked) return;
 
   canvasCtx.save();
-  canvasCtx.lineWidth = 1.15;
-  canvasCtx.strokeStyle = 'rgba(25, 32, 46, 0.4)';
+  canvasCtx.lineWidth = has3DRotation() ? 1.5 : 1.15;
+  canvasCtx.strokeStyle = has3DRotation() ? 'rgba(25, 32, 46, 0.58)' : 'rgba(25, 32, 46, 0.4)';
 
   meshConnections.forEach(([from, to]) => {
     const start = landmarkMap.get(from);
@@ -152,8 +199,8 @@ function drawMesh(landmarkMap) {
     if (!start || !end) return;
 
     canvasCtx.beginPath();
-    canvasCtx.moveTo(mirrorX(start.x), start.y);
-    canvasCtx.lineTo(mirrorX(end.x), end.y);
+    canvasCtx.moveTo(start.x, start.y);
+    canvasCtx.lineTo(end.x, end.y);
     canvasCtx.stroke();
   });
 
@@ -163,8 +210,10 @@ function drawMesh(landmarkMap) {
 function drawLandmarks() {
   drawImage();
 
-  const visibleLandmarks = getVisibleLandmarks();
-  const landmarkMap = new Map(state.landmarks.map((landmark) => [landmark.index, landmark]));
+  const projectedLandmarks = getProjectedLandmarks();
+  const visibleIndexes = new Set(getVisibleLandmarks().map((landmark) => landmark.index));
+  const visibleLandmarks = projectedLandmarks.filter((landmark) => visibleIndexes.has(landmark.index));
+  const landmarkMap = new Map(projectedLandmarks.map((landmark) => [landmark.index, landmark]));
   drawMesh(landmarkMap);
 
   if (!controls.points.checked) {
@@ -178,16 +227,19 @@ function drawLandmarks() {
   canvasCtx.textBaseline = 'middle';
   canvasCtx.font = '10px Inter, Arial, sans-serif';
 
-  visibleLandmarks.forEach((landmark) => {
+  visibleLandmarks
+    .slice()
+    .sort((a, b) => a.depth - b.depth)
+    .forEach((landmark) => {
     const region = getRegion(landmark.index);
-    const x = mirrorX(landmark.x);
     const isFocused = landmark.index === state.highlightedIndex || landmark.index === state.selectedIndex;
-    const radius = isFocused ? pointSize + 5 : pointSize;
+    const depthSize = has3DRotation() ? Math.max(0.65, Math.min(1.45, landmark.scale)) : 1;
+    const radius = (isFocused ? pointSize + 5 : pointSize) * depthSize;
 
     canvasCtx.beginPath();
-    canvasCtx.arc(x, landmark.y, radius, 0, Math.PI * 2);
+    canvasCtx.arc(landmark.x, landmark.y, radius, 0, Math.PI * 2);
     canvasCtx.fillStyle = controls.regions.checked ? region.color : '#17b26a';
-    canvasCtx.globalAlpha = isFocused ? 1 : 0.88;
+    canvasCtx.globalAlpha = isFocused ? 1 : Math.max(0.45, Math.min(0.95, landmark.scale));
     canvasCtx.fill();
 
     if (isFocused) {
@@ -199,7 +251,7 @@ function drawLandmarks() {
     if (controls.labels.checked && (isFocused || landmark.index % 10 === 0)) {
       canvasCtx.globalAlpha = 1;
       canvasCtx.fillStyle = '#19202e';
-      canvasCtx.fillText(String(landmark.index), x, landmark.y - radius - 8);
+      canvasCtx.fillText(String(landmark.index), landmark.x, landmark.y - radius - 8);
     }
   });
 
@@ -272,6 +324,9 @@ async function renderImageAndProcess(image) {
 
 function loadDefaultImage() {
   state.currentFileName = 'human.png';
+  state.rotation.x = 0;
+  state.rotation.y = 0;
+  state.rotation.isDragging = false;
   state.currentImage = new Image();
   state.currentImage.onload = () => renderImageAndProcess(state.currentImage);
   state.currentImage.onerror = () => setStatus('Image error', 'error');
@@ -336,10 +391,12 @@ function exportPng() {
 function findNearestLandmark(mouseX, mouseY) {
   let nearest = null;
   let nearestDistance = Infinity;
+  const visibleIndexes = new Set(getVisibleLandmarks().map((landmark) => landmark.index));
 
-  getVisibleLandmarks().forEach((landmark) => {
-    const x = mirrorX(landmark.x);
-    const distance = Math.hypot(mouseX - x, mouseY - landmark.y);
+  getProjectedLandmarks().forEach((landmark) => {
+    if (!visibleIndexes.has(landmark.index)) return;
+
+    const distance = Math.hypot(mouseX - landmark.x, mouseY - landmark.y);
     if (distance < nearestDistance) {
       nearestDistance = distance;
       nearest = landmark;
@@ -393,6 +450,10 @@ landmarkList.addEventListener('click', (event) => {
 });
 
 canvasElement.addEventListener('mousemove', (event) => {
+  if (state.rotation.isDragging) {
+    return;
+  }
+
   const rect = canvasElement.getBoundingClientRect();
   const mouseX = event.clientX - rect.left;
   const mouseY = event.clientY - rect.top;
@@ -420,9 +481,49 @@ canvasElement.addEventListener('mousemove', (event) => {
 });
 
 canvasElement.addEventListener('mouseleave', () => {
+  if (state.rotation.isDragging) return;
+
   tooltip.style.display = 'none';
   state.highlightedIndex = null;
   drawLandmarks();
+});
+
+canvasElement.addEventListener('pointerdown', (event) => {
+  if (!state.landmarks.length) return;
+
+  state.rotation.isDragging = true;
+  state.rotation.startX = event.clientX;
+  state.rotation.startY = event.clientY;
+  state.rotation.startRotationX = state.rotation.x;
+  state.rotation.startRotationY = state.rotation.y;
+  tooltip.style.display = 'none';
+  canvasElement.setPointerCapture(event.pointerId);
+  setStatus('3D View');
+});
+
+canvasElement.addEventListener('pointermove', (event) => {
+  if (!state.rotation.isDragging) return;
+
+  const deltaX = event.clientX - state.rotation.startX;
+  const deltaY = event.clientY - state.rotation.startY;
+  state.rotation.y = Math.max(-1.05, Math.min(1.05, state.rotation.startRotationY + deltaX * 0.012));
+  state.rotation.x = Math.max(-0.75, Math.min(0.75, state.rotation.startRotationX - deltaY * 0.012));
+  state.highlightedIndex = null;
+  drawLandmarks();
+});
+
+canvasElement.addEventListener('pointerup', (event) => {
+  if (!state.rotation.isDragging) return;
+
+  state.rotation.isDragging = false;
+  canvasElement.releasePointerCapture(event.pointerId);
+  setStatus('Ready');
+});
+
+canvasElement.addEventListener('pointercancel', (event) => {
+  state.rotation.isDragging = false;
+  canvasElement.releasePointerCapture(event.pointerId);
+  setStatus('Ready');
 });
 
 window.addEventListener('resize', () => {
